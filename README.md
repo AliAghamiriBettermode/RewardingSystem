@@ -22,19 +22,63 @@ Point types:
     - Add custom code to `<body>` section
    ```html
    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-       if (location.pathname.startsWith('/member/')) {
-            fetch(`https://example.com/webhook/point-view/${location.pathname.replace('/member/', '')}`, {
-                method: "POST",
-                redirect: "follow"
-                })
-                .then((response) => response.json())
-                .then((result) => {
-                    document.getElementById('member-profile-point-view').innerHTML = result.data.html
-                })
-                .catch((error) => console.error(error));
-        } 
-    });
+    let lastPath = ''
+    function fetchMemberPointData() {
+        if (lastPath !== location.pathname) {
+            lastPath = location.pathname
+            if (location.pathname.startsWith('/member/')) {
+                fetch(`https://example.com/webhook/point-view/${location.pathname.replace('/member/', '')}`, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    })
+                    .then((response) => response.json())
+                    .then((result) => {
+                        document.getElementById('member-profile-point-view').innerHTML = result.data.html
+                    })
+                    .catch((error) => console.error(error))
+            }   
+        }
+    }
+    
+   // Function to observe DOM changes
+    function observeDOMChanges() {
+        const observer = new MutationObserver((mutationsList, observer) => {
+            for (let mutation of mutationsList) {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    fetchMemberPointData()
+                }
+            }
+        })
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+        })
+    }
+
+    // Initial run
+    fetchMemberPointData()
+
+    // Observe path changes
+    window.addEventListener('popstate', fetchMemberPointData);
+
+    // Handle pushState and replaceState as well
+    (function(history) {
+        const pushState = history.pushState
+        const replaceState = history.replaceState
+
+        history.pushState = function(state) {
+            pushState.apply(history, arguments)
+            window.dispatchEvent(new Event('popstate'))
+        }
+
+        history.replaceState = function(state) {
+            replaceState.apply(history, arguments)
+            window.dispatchEvent(new Event('popstate'))
+        }
+    })(window.history)
+    
+    observeDOMChanges()
    </script>
    ```
 
